@@ -2,9 +2,12 @@
 from __future__ import division
 from PIL import Image
 from PIL import ImageFilter
+from PIL import ImageFont
+from PIL import ImageDraw
 from flup.server.fcgi import WSGIServer
 from subprocess import call
 from multiprocessing import Process,Pipe
+from configobj import ConfigObj
 import cgitb
 import  time
 import RPi.GPIO as GPIO
@@ -156,6 +159,12 @@ def app(environ, start_response):
 			yield('done')
 			log('shooted 4 fotos')
 			log('!')
+		
+		elif i["q"][0] == "c":
+			config = ConfigObj('/var/www/photobooth.config')
+			h[0] = config['header1']
+			h[1] = config['header2']
+			yield(h)
             
 		elif i["q"][0] == "i": # initialize the camera
 			text = commands.getstatusoutput('gphoto2 --auto-detect')
