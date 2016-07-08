@@ -1,0 +1,16 @@
+.style-4 input[type="email"] {
+  height: 70px;
+    font-size: 40px;
+  position: absolute;
+  width: 780px;
+  top: 10%;
+  left: 2%;
+  padding: 10px;
+  border: none;
+  border-bottom: solid 2px #c9c9c9;
+  transition: border 0.3s;
+}
+.style-4 input[type="text"]:focus,
+.style-4 input[type="text"].focus {
+  border-bottom: solid 2px #969696;
+}

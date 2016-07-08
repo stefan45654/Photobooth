@@ -1,0 +1,21 @@
+.learn-btn {
+    display: inline-block;
+    padding: 18px 46px;
+    border: 2px solid rgb(82,79,84);
+	width:150px;
+    height: 70px;
+    border-radius: 3px;
+    color: rgb(82,79,84);
+    font-size: 20px;
+	text-align:center;
+    position: absolute;
+    top: 10%;
+    left: 80%;
+}
+
+.learn-btn:hover, .learn-btn:focus {
+    border-color: rgb(82,79,84);
+    color: #73d0da;
+    text-decoration: none;
+}
+

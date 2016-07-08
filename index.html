@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>Photobooth</title>
+	<meta name="author" content="Stefan & Xenia" />
+	<meta name="description" content="fullPage full-screen backgrounds." />
+	<meta name="keywords"  content="fullpage,jquery,demo,screen,fullscreen,backgrounds,full-screen" />
+	<meta name="Resource-type" content="Document" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
+
+	<link rel="stylesheet" type="text/css" href="css/jquery.fullPage.css" />
+	<link rel="stylesheet" type="text/css" href="css/examples.css" />
+	<link rel="stylesheet" type="text/css" href="css/load_spinner.css" />
+    <link rel="stylesheet" type="text/css" href="css/inputbox.css"/>
+    <link rel="stylesheet" type="text/css" href="css/button.css"/>
+    <link rel="stylesheet" type="text/css" href="css/facebookloader.css"/>   
+    <link rel="stylesheet" type="text/css" href="css/flash.css"/>  
+    
+	<style>
+        /* Style for our header texts
+        * --------------------------------------- */
+        h1{
+            font-size: 5em;
+            font-family: chevalier;
+            color: #fff;
+            margin:10px 5px 15px 20px;
+            padding:0%;
+        }
+
+        /* Backgrounds will cover all the section
+        * --------------------------------------- */
+        .section{
+            background-size: cover;
+        }
+        .slide{
+            background-size: cover;
+        }
+
+        /* Defining each section background and styles
+        * --------------------------------------- */
+        #section0{
+            background-image: url(imgs/bg_main.jpg);
+            padding: 2% 0 0 0;
+        }
+        #section1{
+            background-image: url(imgs/bg_main.jpg);
+            padding: 0% 0 0 0;
+        }
+        #section2{
+            background-image: url(imgs/bg_main.jpg);
+            padding: 30% 0 0 0;
+        }
+        #section3{
+            background-image: url(imgs/bg_photoview.jpg);
+            padding: 6% 0 0 0;
+        }
+        #section3 h1{
+            color: #000;
+        }
+	</style>
+
+	<script src="js/jquery.min.js"></script>
+	<script src="js/jquery-ui.min.js"></script>
+	<script type="text/javascript" src="js/jquery.fullPage.js"></script>
+	<script type="text/javascript" src="js/examples.js"></script>
+    <script type="text/javascript" src="js/countdown.js"></script>
+    <script type="text/javascript" src="js/flash.js"></script>
+    
+	<script type="text/javascript">
+        var prevFlag
+        var pic_count
+        pic_count = 0
+        prevFlag = 0
+        
+		function cancelClick(){
+            location.reload();
+        };
+        
+		function printClick(){
+            document.getElementById("cancelButton").style.pointerEvents = 'none'
+            document.getElementById("printButton").style.pointerEvents = 'none'
+            $('#loader').css('visibility','visible');
+			execute('p')
+		};
+		
+        function sendClick(){
+             $('#fullpage').fullpage.moveTo(4,0);
+        };
+        
+        function confirmsendClick(){
+            $('#loadFacebookG').css('visibility','visible'); 
+            /*execute($('#emailbox').val());*/
+        };
+        
+		function execute(qry){
+			var xmlhttp = new XMLHttpRequest();
+			xmlhttp.open("GET",'shootweb.py?q='+qry,true);
+	
+			xmlhttp.onreadystatechange=function(){
+                if (xmlhttp.readyState==3 && xmlhttp.status==200){
+                    if(qry=='s'){
+                        if(pic_count>=1 && pic_count<=4){
+                            $('#foto_text').css('visibility','visible');
+                            flash();
+                            $('#foto_text').text(pic_count);
+                            if(pic_count==4){
+                                setTimeout(function(){
+                                    $('#fullpage').fullpage.moveTo(4,0);
+                                },600)
+                            }
+                        }
+                        pic_count = pic_count +1;
+                    }
+                }
+  				if (xmlhttp.readyState==4 && xmlhttp.status==200)
+    				{
+					if(qry=='w'){
+                        if(xmlhttp.response == "&nbsp; pressed"){
+                            start();
+                        }
+                        else{
+                            execute('w');
+                        }
+					}
+					else if (qry == 's'){
+                        if(xmlhttp.response == "&nbsp; 1234done"){
+				            execute('m');
+                        }
+					}
+					else if (qry == 'm'){
+                        if(xmlhttp.response == "&nbsp; collaged"){
+					       $('#loader').css('visibility','hidden');
+					       $('#collage').css('visibility','visible');
+                            d = new Date()
+					       $('#collage').attr('src','../collage/collage.jpg?'+d.getTime());	
+                        }
+					}
+                    else if (qry == 'p'){
+                        if(xmlhttp.response == "&nbsp; printed"){
+                            $('#loader').css('visibility','hidden');
+                            document.getElementById("printButton").style.pointerEvents = 'auto'
+                            document.getElementById("cancelButton").style.pointerEvents = 'auto'
+                        }
+                    }
+                    else if (qry =='r'){
+                        if(xmlhttp.response == "&nbsp; dropped"){
+                            $('#fullpage').fullpage.moveTo(3,0);
+                            setTimeout(function(){
+                                startCountdown();
+                            },1200)
+                            
+                        }
+                    }
+                    else if (qry =='v'){
+                        if(xmlhttp.response == "&nbsp; captured"){
+                            if(prevFlag==1){
+                                $('#preview').css('visibility','visible');
+                                d=new Date();    
+                                $('#preview').attr('src','capture_preview.jpg?'+d.getTime());
+                                execute('v');
+                            }
+                        }
+                    }
+                    else if (qry =='i'){
+                        if(xmlhttp.response == "&nbsp; detected"){
+                            execute('w');
+                        }
+                    }
+                }
+            }
+            xmlhttp.send(null);
+        };
+        
+		function releaseCamera(){
+            $('#countdown_text').css('visibility','hidden'); 
+            $('#4foto_text').css('visibility','hidden');
+            $('#countdown').css('visibility','hidden'); 
+            execute('s');
+            
+		};
+        
+        function start(){
+            prevFlag=1;
+            execute('v');
+            $('#fullpage').fullpage.moveTo(2,0);
+            
+            setTimeout(function(){
+            prevFlag= 0;
+            execute('r');
+            },6000 )
+        }
+        
+		$(document).ready(function() {
+            execute('i');
+			$('#fullpage').fullpage({
+				verticalCentered: false
+
+			});
+		});
+	</script>
+
+</head>
+<body >
+    <div id="fullpage">
+        <div class="section " id="section0"> <!--Startsection-->
+            <h3 style="font-size:100px;text-align:center">Photobooth</h3>
+            <h3 style="text-align:center"><span style="color:#8CDC3B;">50er </span><span style="color:#000;"> </span><span style="color:#006600;">Susanne</span></h3>
+            <div class="arrow1 bounce"></div>
+            <img src="imgs/remote_lineshade.png" alt="Remote" style="height:35%;position:absolute;top:35%;right:15%">
+        </div>
+        
+        <div class="section " id="section1"> <!--Vorschausection-->
+            <img id="preview" src="capture_preview.jpg" style="position: relative; top: 30px;width: 616px;visibility:hidden"></img>
+            <h3 style="font-size:80px;text-align:center;position:relative;top:70px;">sind alle im Bild!</h3>
+        </div>
+    
+        
+        <div class="section" id="section2"> <!--Countdownsection-->
+            <h3 id= countdown_text style="position:absolute; left:18%; font-size:80px;text-align:center; top:0%; visibility:visible;">Countdown</h3>
+            <h3 id= 4foto_text style="position:absolute;left:12%;font-size:80px;text-align:center;top:10%;visibility:visible;">dann 4 Fotos!!!</h3>
+            <h3 id= foto_text style="font-size:100px;text-align:center; top:50%; visibility:hidden;">4 Fotos!!! </h3>
+            <div class="container" id="countdown">
+                <ul class="flip secondPlay">
+                    <li>
+                        <a href="#">
+                            <div class="up">
+                                <div class="shadow"></div>
+                                <div class="inn">3</div>
+                            </div>
+                            <div class="down">
+                                <div class="shadow"></div>
+                                <div class="inn">3</div>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <div class="up">
+                                <div class="shadow"></div>
+                                <div class="inn">2</div>
+                            </div>
+                            <div class="down">
+                                <div class="shadow"></div>
+                                <div class="inn">2</div>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <div class="up">
+                                <div class="shadow"></div>
+                                <div class="inn">1</div>
+                            </div>
+                            <div class="down">
+                                <div class="shadow"></div>
+                                <div class="inn">1</div>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <div class="up">
+                                <div class="shadow"></div>
+                                <div class="inn">0</div>
+                            </div>
+                            <div class="down">
+                                <div class="shadow"></div>
+                                <div class="inn">0</div>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class='flashDiv' id="flashdiv"></div>
+        </div>
+        
+        <div class="section" id="section3"> <!--Anzeigesection-->
+            <img src="" id="collage" alt="Preview" style="visibility:hidden;height:508px;width:760px;position:absolute;top:6%;left:130px">
+            <div class="loader" id = "loader" style ="position:absolute; left:40%; top:24%">Loading...</div>
+       		<img src="imgs/button_print.png" class="vintage_button" id = "printButton"alt="Print" onClick="printClick()" style="position:absolute;top:602px;right:140px;">
+            <img src="imgs/button_new_try.png" class="vintage_button" id = "cancelButton" alt="Print" onClick="cancelClick()" style="position:absolute;top:602px;left:140px;">
+            <!--<img src="imgs/button_send.png" class="vintage_button" alt="Print" onClick="sendClick()" style="position:absolute;top:606px;right:59px;">-->
+		</div>
+        
+        <div class="section" id="section4"> <!--Emailsection-->
+            <ul class="input-list style-4 clearfix">
+                    <li>
+                        <input id = emailbox type="email" placeholder=":email">
+                        <a href="#about" class="learn-btn animated fadeInUp" onclick="confirmsendClick()">Send </a>
+                    </li>
+            </ul>
+            <div id="loadFacebookG" style="position:relative;top:1%;left:38%;visibility:hidden;">
+                <div id="blockG_1" class="facebook_blockG"></div>
+                <div id="blockG_2" class="facebook_blockG"></div>
+                <div id="blockG_3" class="facebook_blockG"></div>
+            </div>
+		</div>
+	</div>
+</body>
+</html>
