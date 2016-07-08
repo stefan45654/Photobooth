@@ -162,8 +162,9 @@ def app(environ, start_response):
 		
 		elif i["q"][0] == "c":
 			config = ConfigObj('/var/www/photobooth.config')
-			head[0] = config['header1']
-			head[1] = config['header2']
+			h = []
+			h.append(config['header1'])
+			h.append(config['header2'])
 			yield(h)
             
 		elif i["q"][0] == "i": # initialize the camera
