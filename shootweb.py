@@ -290,6 +290,7 @@ def app(environ, start_response):
 
 			log('mirror dropped')
 			log('!')
+		
 
 if __name__ == '__main__':
 	log('Started WSGI Server')	

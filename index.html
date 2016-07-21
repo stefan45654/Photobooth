@@ -104,6 +104,9 @@
 		function execute(qry){
 			var xmlhttp = new XMLHttpRequest();
 			xmlhttp.open("GET",'shootweb.py?q='+qry,true);
+            if (qry == 'w'){
+                xmlhttp.timeout = 10000;
+            }
 			xmlhttp.onreadystatechange=function(){
                 qry = xmlhttp.responseURL.slice(-1);
                 if (xmlhttp.readyState==3 && xmlhttp.status==200){
@@ -211,7 +214,9 @@
                     swal({   title: "Error!",   text: "500 : Internal Server Error!",   type: "error",   confirmButtonText: "OK" },function(){setTimeout(function(){location.reload();},100)});
                 }
             }
-            
+            xmlhttp.ontimeout=function(){
+                swal({   title: "Error!",   text: "timeout error with the remote",   type: "error",   confirmButtonText: "OK" },function(){setTimeout(function(){location.reload();},100)});
+            }
             xmlhttp.send(null);
         };
         
