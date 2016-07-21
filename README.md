@@ -11,7 +11,7 @@ This project represents a "Photobooth" for the Raspberry Pi (tested on RPi 2) wh
 5. setup lighttpd as in the link above except replace /var/www/doStuff.py with /var/www/shootweb.py in the conf file
 6. Install PIL ```pip install pillow``` and avahi-utils ``` apt-get install avahi-utils```
 7. copy all the files to the /var/www/ directory
-8. restart the webserver service lighttpd restart
+8. restart the webserver with ``` service lighttpd restart```
 9. Setup cups for remote access like in <http://thismightbehelpful.blogspot.co.at/2008/09/remote-access-to-cups-web-interface.html>
 10. Add pi to the lpadmin group so he can add/remove printers ```adduser pi lpadmin```
 11. Wire a Switch for the remote between the Pin 2 (5V) and 8 (GPIO14)
