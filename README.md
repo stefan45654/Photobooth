@@ -9,7 +9,7 @@ This project represents a "Photobooth" for the Raspberry Pi (tested on RPi 2) wh
 3. Install gphoto2 using this nice updater and installer <https://github.com/gonzalo/gphoto2-updater>
 4. follow the instructions to install python flup and create the pythonRoot copy following this tutorial <http://davstott.me.uk/index.php/2013/03/17/raspberry-pi-controlling-gpio-from-the-web/>
 5. setup lighttpd as in the link above except replace /var/www/doStuff.py with /var/www/shootweb.py in the conf file
-6. Install PIL ```pip install pillow``` and avahi-utils ``` apt-get install avahi-utils```
+6. Install PIL and ConfigObj ```pip install pillow```,```pip install configobj``` and avahi-utils ``` apt-get install avahi-utils```
 7. copy all the files to the /var/www/ directory
 8. restart the webserver with ``` service lighttpd restart```
 9. Setup cups for remote access like in <http://thismightbehelpful.blogspot.co.at/2008/09/remote-access-to-cups-web-interface.html>
