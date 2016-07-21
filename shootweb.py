@@ -3,7 +3,7 @@ from __future__ import division
 from PIL import Image
 from PIL import ImageFilter
 from PIL import ImageFont
-from PIL import ImageDraw
+from PIL import ImageDraw,ImageOps
 from flup.server.fcgi import WSGIServer
 from subprocess import call
 from multiprocessing import Process,Pipe
@@ -17,16 +17,17 @@ import string
 import subprocess
 import commands
 import datetime
+import threading
 
 
 cgitb.enable()
-
+button_lock = threading.Lock()
 button= 8
 
 #GPIO.setmode(GPIO.BOARD)
 #GPIO.setwarnings(False)
 
-def log(text):
+def log(text):	#append the logfile
 	lg = open('/var/www/log/log.txt','a+')
 	if text != '!':
 		now = datetime.datetime.now().strftime("%d %b %Y %H:%M:%S")	
@@ -34,27 +35,73 @@ def log(text):
 	else:
 		lg.write('\n')
 	lg.close
+	
+def hex_to_rgb(value): #calculate rgb values from hex color code
+    value = value.lstrip('#')
+    lv = len(value)
+    return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
 def sendmail(to):
 	log('sending collagemail to '+to)
 	call(['mpack','-s','Photobooth Lydia und Stephan','-d','/var/www/description.txt','/var/www/collage/collage.jpg',to])	 
 
 def collage():
-	
+	config = ConfigObj('/var/www/photobooth.config')
+	coll_section = config['Collage']
+	txt1=coll_section['text1'][0]
+	txt1c=hex_to_rgb(coll_section['text1'][1])
+	txt2=coll_section['text2'][0]
+	txt2c=hex_to_rgb(coll_section['text2'][1])
 	#load the white background
-	log('Loading Background')
-	back= Image.open("/var/www/back-names.jpg")
-	width_back = back.size[0]
-	height_back = back.size[1]
-	back_resolution = int(width_back / 148) # calculate back resolution in pixel/mm
+	w=int(coll_section['width_res'])
 	
-	offset_bp = 2 #offset zwischen den bildern in mm
-	offset_l = 20 #offset von links (senkrechter Streifen) in mm
+	offset_bp = float(coll_section['bp_offset']) #offset zwischen den bildern in mm
+	offset_r = float(coll_section['r_offset']) #offset von links (senkrechter Streifen) in mm
+	offset_l = float(coll_section['l_offset'])
+	offset_t = float(coll_section['t_offset'])
+	size_text1 = float(coll_section['text1_size'])
+	size_text2 = float(coll_section['text2_size'])
+	offset_text = float(coll_section['text_offset'])
 	
-	offset_bp_pix = offset_bp * back_resolution
-	offset_l_pix = offset_l * back_resolution
-	im_insertheight = int((height_back -(3*offset_bp_pix))/2)
-	im_insertwidth = int((width_back -(2*offset_bp_pix) -(offset_l_pix))/2)
+	w_mm= int(coll_section['width'])
+	h_mm= int(coll_section['height'])
+
+	h = int(w*(h_mm/w_mm))
+
+	pix_mm=w/w_mm
+	
+	offset_bp_pix = int(offset_bp * pix_mm)
+	offset_left_pix = int(offset_l*pix_mm)
+	offset_top_pix = int(offset_t*pix_mm)
+	offset_right_pix = int(offset_r*pix_mm)
+	size_text1_pix = int(size_text1*pix_mm)
+	size_text2_pix = int(size_text2*pix_mm)
+	offset_text_pix = int(offset_text*pix_mm)
+
+	back = Image.new('RGBA',(w,h),(255,255,255,0))
+	fontchev = ImageFont.truetype('fonts/chevalier.ttf',int(size_text1_pix))
+	fontking = ImageFont.truetype('fonts/kingthings.ttf',int(size_text2_pix))
+
+	txtimg1 = Image.new('L',(h,size_text1_pix))
+	txtimg2 = Image.new('L',(h,size_text1_pix))
+
+	draw1 = ImageDraw.Draw(txtimg1)
+	draw2 = ImageDraw.Draw(txtimg2)
+
+	w1,h1 = draw1.textsize(txt1,font=fontchev)
+	w2,h2 = draw2.textsize(txt2,font=fontking)
+
+	draw1.text((int(h/2)-int(w1/2),int((size_text1_pix-h1)/2)),txt1,font=fontchev,fill=255)
+	draw2.text((int(h/2)-int(w2/2),int((size_text1_pix-h2)/2)),txt2,font=fontking,fill=255)
+
+	rot1=txtimg1.rotate(90,expand=1)
+	rot2=txtimg2.rotate(90,expand=1)
+
+	back.paste(ImageOps.colorize(rot1,(0,0,0),txt1c),(w-(offset_right_pix - offset_text_pix),0),rot1)
+	back.paste(ImageOps.colorize(rot2,(0,0,0),txt2c),(w-(offset_right_pix - offset_text_pix - h1),0),rot2)
+	
+	im_insertheight = int((h -offset_bp_pix-(2*offset_top_pix))/2)
+	im_insertwidth = int((w - offset_bp_pix - offset_right_pix - offset_left_pix)/2)
 	
 	#get list of all photos on the camera
 	image_string = commands.getstatusoutput('ls -t /var/www/current/')
@@ -98,21 +145,22 @@ def collage():
 		p3.join()
 		p4.join()
 		
-		for i in range(0, 4):
-			log('Processing Photo '+image_list[i])
-			#apply filter to the image
-			call(['cp','/var/www/current/'+image_list[i],'/var/www/archive/collage'+num+'/'])			
-			#place image on white background
-			y = 0
-			if i > 1:
-				y = y + im_insertheight+offset_bp_pix
-			back_box = (offset_bp_pix+i*(im_insertwidth+offset_bp_pix) % ((2*offset_bp_pix)+(2*im_insertwidth)), y + offset_bp_pix,(im_insertwidth+offset_bp_pix)+i*(im_insertwidth+offset_bp_pix) % ((2*offset_bp_pix)+(2*im_insertwidth)), y + (im_insertheight+offset_bp_pix))
-			back.paste(imgs[i], back_box)
+		for i in range(0,2):
+			for j in range(0,2):
+				log('Processing Photo '+image_list[j+(i*2)])
+				call(['cp','/var/www/current/'+image_list[j+(i*2)],'/var/www/archive/collage'+num+'/'])			
+				#place image on white background
+				back_box = (offset_left_pix+(j*(im_insertwidth+offset_bp_pix)),offset_top_pix+(i*(im_insertheight+offset_bp_pix)))
+				back.paste(imgs[j+(i*2)], back_box)
 		#save the collage onto the sd card
 		log('Saving final collage')
-		back.save('/var/www/archive/collage'+num+'.jpg')
+		back.save('/var/www/archive/collage'+num+'.jpg',"JPEG",dpi=(int(w/w_mm*25.4),int(w/w_mm*25.4)))
 		call(['cp','/var/www/archive/collage'+num+'.jpg','/var/www/collage/collage.jpg'])
-	call(['rm','-r','/var/www/current/'])
+		status = 'collaged'
+	else:
+		status = 'error'
+	call(['rm','-r','/var/www/current/'])	#create the collage
+	return status
 
 def create_imglist(pathlist):
 	list = ['','','','']
@@ -120,7 +168,7 @@ def create_imglist(pathlist):
 		list[i] = '/var/www/current/'+pathlist[i]
 	return list
 	
-def resize(conn,insertheight,insertwidth,path):
+def resize(conn,insertheight,insertwidth,path): #resize image for the collage (needed for parallelisation)
 	# resize image
 	image = Image.open(path)
 	width = image.size[0]
@@ -138,10 +186,12 @@ def app(environ, start_response):
 	GPIO.setwarnings(False)
 	start_response("200 OK", [("Content-Type", "text/html")])
 	i = urlparse.parse_qs(environ["QUERY_STRING"])
-	yield('&nbsp; ')
 	if "q" in i:
 		if i["q"][0] == "s":	#shoot the camera 4 times
-			cmd='gphoto2 -F 4 -I 2.5 --capture-image-and-download --filename /var/www/current/pic%n.jpg --force-overwrite'
+			config = ConfigObj('/var/www/photobooth.config')
+			coll_section = config['Collage']
+			timing = coll_section['shoot_timing']
+			cmd='gphoto2 -F 4 -I '+timing+' --capture-image-and-download --filename /var/www/current/pic%n.jpg --force-overwrite'
 			ps = subprocess.Popen(cmd,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=None)
 			while True:
 				output = ps.stdout.readline()
@@ -150,27 +200,41 @@ def app(environ, start_response):
 				if output:
 					if output.strip()[17]=='1':
 						yield('1')
-					if output.strip()[17]=='2':
+					elif output.strip()[17]=='2':
 						yield('2')
-					if output.strip()[17]=='3':
+					elif output.strip()[17]=='3':
 						yield('3')
-					if output.strip()[17]=='4':
+					elif output.strip()[17]=='4':
 						yield('4')
 			yield('done')
 			log('shooted 4 fotos')
 			log('!')
 		
-		elif i["q"][0] == "c":
+		elif i["q"][0] == "c":		# read the headers from the config file and yield it to the client
 			config = ConfigObj('/var/www/photobooth.config')
-			h = []
-			h.append(config['header1'])
-			h.append(config['header2'])
-			yield(h)
+			disp_section=config['Display']
+			h1= disp_section['header1']
+			h1s= disp_section['header1size']
+			html1='<h3 style="font-size:'+h1s+'px;text-align:center;color:'+h1[1]+'">'+h1[0]+'</h3>'
+			h2 = disp_section['header2']
+			h2s = disp_section['header2size']
+			html2 = '<h3 style="text-align:center;font-size:'+h2s+'px">'
+			for i in range(0,int(len(h2)/2)):
+				html2 = html2+'<span style="color:'+h2[(i*2)+1]+';">'+h2[i*2]+' </span>'
+			html2 = html2+'</h3>'
+			yield(html1+html2)
             
-		elif i["q"][0] == "i": # initialize the camera
-			text = commands.getstatusoutput('gphoto2 --auto-detect')
-			yield('detected')
-			log('camera '+text[1][107:125]+' detected')
+		elif i["q"][0] == "i": # check if the camera and the printer are connected
+			text_camera = commands.getstatusoutput('gphoto2 --auto-detect')
+			text_printer = commands.getstatusoutput('avahi-browse -t _ipp._tcp')
+			if text_camera[1][107:len(text_camera[1])] == '':
+				yield('camera not connected or turned off - please connect the camera\n')
+				log('no camera connected')
+			if text_printer[1] == '':
+				yield('printer offline or turned off - please connect the printer to wifi network "Photobooth"')
+			if (text_camera[1][107:len(text_camera[1])] != '') & (text_printer [1] != ''):
+				yield('detected')
+				log('camera '+text_camera[1][107:len(text_camera[1])]+' and printer '+text_printer[1]+'detected')
 			log('!')
             
 		elif i["q"][0] == "v": # take a preview image
@@ -179,24 +243,31 @@ def app(environ, start_response):
 			yield('captured')
 			
 		elif i["q"][0] == "w":	#wait for the remote
-			log('Waiting for Button Press')
+			log('Acquire Lock')
 			GPIO.setup(button,GPIO.IN,GPIO.PUD_DOWN)
-			GPIO.wait_for_edge(button,GPIO.RISING)
-			time.sleep(0.2)
-			if GPIO.input(button) == GPIO.HIGH:
-				commands.getstatusoutput('gphoto2 --set-config viewfinder=1')
-				yield('pressed')
-				log('Button pressed')
-				log('!')
+			button_lock.acquire()		#wait_for_button is not thread safe (fixes runtime errors)
+			log('Lock acquired waiting for edge')
+			channel=GPIO.wait_for_edge(button,GPIO.RISING,timeout=8000)	#timeout is needed to prevent errors
+			if channel is None:
+				yield('timeout')
+				log('remote timeout')
+			else:
+				time.sleep(0.2)
+				if GPIO.input(button) == GPIO.HIGH:
+					commands.getstatusoutput('gphoto2 --set-config viewfinder=1')
+					yield('pressed')
+					log('Button pressed')
+					log('!')
+			button_lock.release()
 
 		elif i["q"][0] == "m": #create the collage
-			collage()	#open collage function
-			yield('collaged')
+			status_= collage()	#open collage function
+			yield(status_)
 			log('!')
             
 		elif i["q"][0] == "p": #print the collage
 			log('start printing')
-			call(['lpr','-s','-o','fit-to-page','-P','Canon_CP910','/var/www/collage/collage.jpg'])
+			call(['lpr','-s','-o','media=Custom.255x377','-P','Canon_CP910','/var/www/collage/collage.jpg'])
 			flg = True
 			while flg == True:
 				time.sleep(1)
@@ -208,13 +279,18 @@ def app(environ, start_response):
 			log('Printing complete')
 			log('!')
 			
-		elif i["q"][0] == 'r':
-			commands.getstatusoutput('gphoto2 --set-config viewfinder=0')
+		elif i["q"][0] == 'r':	#drop the mirror on the camera
+			out = commands.getstatusoutput('gphoto2 --set-config viewfinder=0')
 			time.sleep(0.5)
 			call(['gphoto2','--set-config','viewfinder=0'])
-			yield('dropped')
+			if out[0] == 0:
+				yield('dropped')
+			if out[0] == 256:
+				yield('no camera found')
+
 			log('mirror dropped')
 			log('!')
 
-if __name__ == '__main__':	
+if __name__ == '__main__':
+	log('Started WSGI Server')	
 	WSGIServer(app).run()

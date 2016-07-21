@@ -5,18 +5,17 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<title>Photobooth</title>
 	<meta name="author" content="Stefan & Xenia" />
-	<meta name="description" content="fullPage full-screen backgrounds." />
-	<meta name="keywords"  content="fullpage,jquery,demo,screen,fullscreen,backgrounds,full-screen" />
+	<meta name="description" content="photobooth" />
+	<meta name="keywords"  content="photobooth" />
 	<meta name="Resource-type" content="Document" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
 
 	<link rel="stylesheet" type="text/css" href="css/jquery.fullPage.css" />
 	<link rel="stylesheet" type="text/css" href="css/examples.css" />
-	<link rel="stylesheet" type="text/css" href="css/load_spinner.css" />
-    <link rel="stylesheet" type="text/css" href="css/inputbox.css"/>
-    <link rel="stylesheet" type="text/css" href="css/button.css"/>
-    <link rel="stylesheet" type="text/css" href="css/facebookloader.css"/>   
-    <link rel="stylesheet" type="text/css" href="css/flash.css"/>  
+    <!--<link rel="stylesheet" type="text/css" href="css/inputbox.css"/>-->
+    <link rel="stylesheet" type="text/css" href="css/flash.css"/>
+    <link rel="stylesheet" type="text/css" href="css/spinner.css"/>
+    <link rel="stylesheet" type="text/css" href="css/sweetalert.css"/>
     
 	<style>
         /* Style for our header texts
@@ -63,33 +62,41 @@
 
 	<script src="js/jquery.min.js"></script>
 	<script src="js/jquery-ui.min.js"></script>
-	<script type="text/javascript" src="js/jquery.fullPage.js"></script>
+	<script type="text/javascript" src="js/jquery.fullPage.min.js"></script>
 	<script type="text/javascript" src="js/examples.js"></script>
     <script type="text/javascript" src="js/countdown.js"></script>
     <script type="text/javascript" src="js/flash.js"></script>
+    <script type="text/javascript" src="js/sweetalert-dev.js"></script>
     
 	<script type="text/javascript">
-        var prevFlag
-        var pic_count
+        var prevFlag    //Flag for the preview mode
+        var pic_count   //count the number of pictures taken
+        var startFlag  //determine if the remote was clicked to start the process and terminate the waiting for the button
+        var prev_count  //counter for the taken preview pictures
+        var remoteFlag
+        startFlag = 0
         pic_count = 0
         prevFlag = 0
+        prev_count = 1
+        remoteFlag = 0
         
-		function cancelClick(){
+		function cancelClick(){           //if cancel reload the whole page
             location.reload();
         };
         
-		function printClick(){
+		function printClick(){            //start the printing process
             document.getElementById("cancelButton").style.pointerEvents = 'none'
             document.getElementById("printButton").style.pointerEvents = 'none'
             $('#loader').css('visibility','visible');
+            $('#rcorners').css('visibility','visible');
 			execute('p')
 		};
 		
-        function sendClick(){
+        function sendClick(){           //move to the email section //not finished
              $('#fullpage').fullpage.moveTo(4,0);
         };
         
-        function confirmsendClick(){
+        function confirmsendClick(){    //send the email
             $('#loadFacebookG').css('visibility','visible'); 
             /*execute($('#emailbox').val());*/
         };
@@ -97,18 +104,18 @@
 		function execute(qry){
 			var xmlhttp = new XMLHttpRequest();
 			xmlhttp.open("GET",'shootweb.py?q='+qry,true);
-	
 			xmlhttp.onreadystatechange=function(){
+                qry = xmlhttp.responseURL.slice(-1);
                 if (xmlhttp.readyState==3 && xmlhttp.status==200){
-                    if(qry=='s'){
-                        if(pic_count>=1 && pic_count<=4){
+                    if(qry =='s'){
+                        if(pic_count>=0 && pic_count<=3){
                             $('#foto_text').css('visibility','visible');
                             flash();
-                            $('#foto_text').text(pic_count);
-                            if(pic_count==4){
+                            $('#foto_text').text(pic_count+1);
+                            if(pic_count==3){
                                 setTimeout(function(){
                                     $('#fullpage').fullpage.moveTo(4,0);
-                                },600)
+                                },800)
                             }
                         }
                         pic_count = pic_count +1;
@@ -117,66 +124,98 @@
   				if (xmlhttp.readyState==4 && xmlhttp.status==200)
     				{
 					if(qry=='w'){
-                        if(xmlhttp.response == "&nbsp; pressed"){
-                            start();
-                        }
-                        else{
-                            execute('w');
-                        }
+                        
+                            if(xmlhttp.response == "pressed" && startFlag == 0 && remoteFlag == 0){
+                                startFlag = 1;
+                                start();
+                            }
+                            else if(xmlhttp.response == "timeout" && startFlag == 0 && remoteFlag == 0){
+                                execute('w');       //reload because timeout has occured
+                            }
+                            else if((xmlhttp.response != "timeout") && (xmlhttp.response != "pressed")) //something bad has happened
+                            {
+                                swal({   title: "Error!",   text: "Remote Error occured Reload in 5 seconds",   type: "error",   confirmButtonText: "OK" ,showConfirmButton: false});
+                                setTimeout(function(){location.reload();},5000);
+                            }
 					}
-                    else if (qry == 'c'){
-                        execute('c');
+                    else if (qry =='c'){
+                        $('#section0').prepend(xmlhttp.response)
                     }
-					else if (qry == 's'){
-                        if(xmlhttp.response == "&nbsp; 1234done"){
+					else if (qry =='s'){
+                        if(xmlhttp.response == "1234done"){
 				            execute('m');
                         }
-					}
-					else if (qry == 'm'){
-                        if(xmlhttp.response == "&nbsp; collaged"){
-					       $('#loader').css('visibility','hidden');
-					       $('#collage').css('visibility','visible');
-                            d = new Date()
-					       $('#collage').attr('src','../collage/collage.jpg?'+d.getTime());	
+                        else{
+                            swal({   title: "Error!",   text: "gphoto2 shooting error (maybe camera not found)",   type: "error",   confirmButtonText: "OK" },function(){setTimeout(function(){location.reload();},100)});
                         }
 					}
-                    else if (qry == 'p'){
-                        if(xmlhttp.response == "&nbsp; printed"){
+					else if (qry =='m'){
+                        if(xmlhttp.response == "collaged"){
                             $('#loader').css('visibility','hidden');
+                            $('#rcorners').css('visibility','hidden');
+                            $('#collage').css('visibility','visible');
+                            $('#rcorners').css('visibility','hidden');
+                            d = new Date();
+                            $('#collage').attr('src','../collage/collage.jpg?'+d.getTime());	
+                        }
+                        else{
+                            swal({   title: "Error!",   text: "something went wrong during the collage creation",   type: "error",   confirmButtonText: "OK" },function(){setTimeout(function(){location.reload();},100)});
+                        }
+					}
+                    else if (qry =='p'){
+                        if(xmlhttp.response == "printed"){
+                            $('#loader').css('visibility','hidden');
+                            $('#rcorners').css('visibility','hidden');
                             document.getElementById("printButton").style.pointerEvents = 'auto'
                             document.getElementById("cancelButton").style.pointerEvents = 'auto'
                         }
+                        else{
+                            swal({   title: "Error!",   text: "printing failed",   type: "error",   confirmButtonText: "OK" },function(){setTimeout(function(){location.reload();},100)});
+                        }
                     }
                     else if (qry =='r'){
-                        if(xmlhttp.response == "&nbsp; dropped"){
+                        if(xmlhttp.response == "dropped"){
                             $('#fullpage').fullpage.moveTo(3,0);
                             setTimeout(function(){
                                 startCountdown();
-                            },1200)
-                            
+                            },1000)
+                        }
+                        else{
+                            swal({   title: "Error!",   text: "drop the mirror failed no camera found",   type: "error",   confirmButtonText: "OK" },function(){setTimeout(function(){location.reload();},100)});
                         }
                     }
                     else if (qry =='v'){
-                        if(xmlhttp.response == "&nbsp; captured"){
-                            if(prevFlag==1){
+                        if(xmlhttp.response == "captured"){
+                            if(prev_count<=5){
+                                prev_count = prev_count+1;
                                 $('#preview').css('visibility','visible');
                                 d=new Date();    
                                 $('#preview').attr('src','capture_preview.jpg?'+d.getTime());
                                 execute('v');
                             }
+                            else{
+                                execute('r');
+                            }
                         }
                     }
                     else if (qry =='i'){
-                        if(xmlhttp.response == "&nbsp; detected"){
+                        if(xmlhttp.response == "detected"){
                             execute('w');
+                        }
+                        else{
+                            swal({   title: "Error!",   text: xmlhttp.response,   type: "error",   confirmButtonText: "OK" },function(){setTimeout(function(){location.reload();},100)});
                         }
                     }
                 }
+                if(xmlhttp.status == 500){
+                    swal({   title: "Error!",   text: "500 : Internal Server Error!",   type: "error",   confirmButtonText: "OK" },function(){setTimeout(function(){location.reload();},100)});
+                }
             }
+            
             xmlhttp.send(null);
         };
         
-		function releaseCamera(){
+		function releaseCamera(){      //release the camera coming from countdown.js when the countdown has finished
             $('#countdown_text').css('visibility','hidden'); 
             $('#4foto_text').css('visibility','hidden');
             $('#countdown').css('visibility','hidden'); 
@@ -184,19 +223,21 @@
             
 		};
         
-        function start(){
-            prevFlag=1;
+        function start(){               //start the preview and collage process
             execute('v');
             $('#fullpage').fullpage.moveTo(2,0);
-            
-            setTimeout(function(){
-            prevFlag= 0;
-            execute('r');
-            },6000 )
         }
         
-		$(document).ready(function() {
+        function startremote(){ //start from clicking the remote
+            if (startFlag == 0){
+                remoteFlag=1;
+                start();
+            }
+        }
+        
+		$(document).ready(function() {    //when the document has loaded initialize the camera and read the headers from the config file
             execute('i');
+            execute('c');
 			$('#fullpage').fullpage({
 				verticalCentered: false
 
@@ -208,15 +249,14 @@
 <body >
     <div id="fullpage">
         <div class="section " id="section0"> <!--Startsection-->
-            <h3 style="font-size:100px;text-align:center">Photobooth</h3>
-            <h3 style="text-align:center"><span style="color:#8CDC3B;">50er </span><span style="color:#000;"> </span><span style="color:#006600;">Susanne</span></h3>
+            <!--Headers will be read in directly from the config file-->
             <div class="arrow1 bounce"></div>
-            <img src="imgs/remote_lineshade.png" alt="Remote" style="height:35%;position:absolute;top:35%;right:15%">
+            <img src="imgs/remote_lineshade.png" alt="Remote" style="height:35%;position:absolute;top:35%;right:15%" onclick="startremote()">
         </div>
         
-        <div class="section " id="section1"> <!--Vorschausection-->
-            <img id="preview" src="capture_preview.jpg" style="position: relative; top: 30px;width: 616px;visibility:hidden"></img>
-            <h3 style="font-size:80px;text-align:center;position:relative;top:70px;">sind alle im Bild!</h3>
+        <div class="section " id="section1"> <!--Previewsection-->
+            <img id="preview" style="position: relative; top: 30px;width: 616px;visibility:hidden"></img>
+            <h3 style="font-size:80px;text-align:center;position:relative;top:70px;">sind alle im Bild?</h3>
         </div>
     
         
@@ -279,16 +319,30 @@
             <div class='flashDiv' id="flashdiv"></div>
         </div>
         
-        <div class="section" id="section3"> <!--Anzeigesection-->
-            <img src="" id="collage" alt="Preview" style="visibility:hidden;height:508px;width:760px;position:absolute;top:6%;left:130px">
-            <div class="loader" id = "loader" style ="position:absolute; left:40%; top:24%">Loading...</div>
+        <div class="section" id="section3"> <!--Displaysection-->
+            <img src="" id="collage" alt="Preview" style="visibility:hidden;width:789px;position:absolute;top:4%;left:110px">
+            <p id="rcorners" style="width:123px;height:123px;top:29.5%;left:44%;position:absolute"></p>
+            <div class="sk-circle"id = "loader" style ="position:absolute;left:45%;top:18%;height:100px;width:100px">
+                <div class="sk-circle1 sk-child"></div>
+                <div class="sk-circle2 sk-child"></div>
+                <div class="sk-circle3 sk-child"></div>
+                <div class="sk-circle4 sk-child"></div>
+                <div class="sk-circle5 sk-child"></div>
+                <div class="sk-circle6 sk-child"></div>
+                <div class="sk-circle7 sk-child"></div>
+                <div class="sk-circle8 sk-child"></div>
+                <div class="sk-circle9 sk-child"></div>
+                <div class="sk-circle10 sk-child"></div>
+                <div class="sk-circle11 sk-child"></div>
+                <div class="sk-circle12 sk-child"></div>
+            </div>
        		<img src="imgs/button_print.png" class="vintage_button" id = "printButton"alt="Print" onClick="printClick()" style="position:absolute;top:602px;right:140px;">
             <img src="imgs/button_new_try.png" class="vintage_button" id = "cancelButton" alt="Print" onClick="cancelClick()" style="position:absolute;top:602px;left:140px;">
             <!--<img src="imgs/button_send.png" class="vintage_button" alt="Print" onClick="sendClick()" style="position:absolute;top:606px;right:59px;">-->
 		</div>
         
         <div class="section" id="section4"> <!--Emailsection-->
-            <ul class="input-list style-4 clearfix">
+            <!--<ul class="input-list style-4 clearfix">
                     <li>
                         <input id = emailbox type="email" placeholder=":email">
                         <a href="#about" class="learn-btn animated fadeInUp" onclick="confirmsendClick()">Send </a>
@@ -298,7 +352,7 @@
                 <div id="blockG_1" class="facebook_blockG"></div>
                 <div id="blockG_2" class="facebook_blockG"></div>
                 <div id="blockG_3" class="facebook_blockG"></div>
-            </div>
+            </div>-->
 		</div>
 	</div>
 </body>
