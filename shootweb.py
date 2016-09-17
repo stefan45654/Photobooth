@@ -19,10 +19,48 @@ import commands
 import datetime
 import threading
 
+def hex_to_rgb(value): #calculate rgb values from hex color code
+    value = value.lstrip('#')
+    lv = len(value)
+    return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
 cgitb.enable()
 button_lock = threading.Lock()
 button= 8
+config = ConfigObj('/var/www/photobooth.config')
+coll_section = config['Collage']
+txt1=coll_section['text1'][0]
+txt1c=hex_to_rgb(coll_section['text1'][1])
+txt2=coll_section['text2'][0]
+txt2c=hex_to_rgb(coll_section['text2'][1])
+#load the white background
+w=int(coll_section['width_res'])
+
+offset_bp = float(coll_section['bp_offset']) #offset zwischen den bildern in mm
+offset_r = float(coll_section['r_offset']) #offset von links (senkrechter Streifen) in mm
+offset_l = float(coll_section['l_offset'])
+offset_t = float(coll_section['t_offset'])
+size_text1 = float(coll_section['text1_size'])
+size_text2 = float(coll_section['text2_size'])
+offset_text = float(coll_section['text_offset'])
+offset_between_texts = float(coll_section['offset_between_texts'])
+txt1_font = coll_section['text1_font']
+txt2_font = coll_section['text2_font']
+
+w_mm= int(coll_section['width'])
+h_mm= int(coll_section['height'])
+h = int(w*h_mm/w_mm)
+pix_mm=w/w_mm
+
+offset_bp_pix = int(offset_bp * pix_mm)
+offset_left_pix = int(offset_l*pix_mm)
+offset_top_pix = int(offset_t*pix_mm)
+offset_right_pix = int(offset_r*pix_mm)
+size_text1_pix = int(size_text1*pix_mm)
+size_text2_pix = int(size_text2*pix_mm)
+offset_text_pix = int(offset_text*pix_mm)
+offset_between_texts_pix = int(offset_between_texts*pix_mm)
+back = Image.new('RGBA',(w,h),(255,255,255,0))
 
 #GPIO.setmode(GPIO.BOARD)
 #GPIO.setwarnings(False)
@@ -36,51 +74,16 @@ def log(text):	#append the logfile
 		lg.write('\n')
 	lg.close
 	
-def hex_to_rgb(value): #calculate rgb values from hex color code
-    value = value.lstrip('#')
-    lv = len(value)
-    return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
-def sendmail(to):
+
+def sendmail(to): #old function (not used right now)
 	log('sending collagemail to '+to)
-	call(['mpack','-s','Photobooth Lydia und Stephan','-d','/var/www/description.txt','/var/www/collage/collage.jpg',to])	 
-
-def collage():
-	config = ConfigObj('/var/www/photobooth.config')
-	coll_section = config['Collage']
-	txt1=coll_section['text1'][0]
-	txt1c=hex_to_rgb(coll_section['text1'][1])
-	txt2=coll_section['text2'][0]
-	txt2c=hex_to_rgb(coll_section['text2'][1])
-	#load the white background
-	w=int(coll_section['width_res'])
+	call(['mpack','-s','Photobooth Lydia und Stephan','-d','/var/www/description.txt','/var/www/collage/collage.jpg',to])
 	
-	offset_bp = float(coll_section['bp_offset']) #offset zwischen den bildern in mm
-	offset_r = float(coll_section['r_offset']) #offset von links (senkrechter Streifen) in mm
-	offset_l = float(coll_section['l_offset'])
-	offset_t = float(coll_section['t_offset'])
-	size_text1 = float(coll_section['text1_size'])
-	size_text2 = float(coll_section['text2_size'])
-	offset_text = float(coll_section['text_offset'])
-	
-	w_mm= int(coll_section['width'])
-	h_mm= int(coll_section['height'])
+def create_collage_back():
 
-	h = int(w*(h_mm/w_mm))
-
-	pix_mm=w/w_mm
-	
-	offset_bp_pix = int(offset_bp * pix_mm)
-	offset_left_pix = int(offset_l*pix_mm)
-	offset_top_pix = int(offset_t*pix_mm)
-	offset_right_pix = int(offset_r*pix_mm)
-	size_text1_pix = int(size_text1*pix_mm)
-	size_text2_pix = int(size_text2*pix_mm)
-	offset_text_pix = int(offset_text*pix_mm)
-
-	back = Image.new('RGBA',(w,h),(255,255,255,0))
-	fontchev = ImageFont.truetype('fonts/chevalier.ttf',int(size_text1_pix))
-	fontking = ImageFont.truetype('fonts/kingthings.ttf',int(size_text2_pix))
+	font1 = ImageFont.truetype(txt1_font,int(size_text1_pix))
+	font2 = ImageFont.truetype(txt2_font,int(size_text2_pix))
 
 	txtimg1 = Image.new('L',(h,size_text1_pix))
 	txtimg2 = Image.new('L',(h,size_text1_pix))
@@ -88,18 +91,20 @@ def collage():
 	draw1 = ImageDraw.Draw(txtimg1)
 	draw2 = ImageDraw.Draw(txtimg2)
 
-	w1,h1 = draw1.textsize(txt1,font=fontchev)
-	w2,h2 = draw2.textsize(txt2,font=fontking)
+	w1,h1 = draw1.textsize(txt1,font=font1)
+	w2,h2 = draw2.textsize(txt2,font=font2)
 
-	draw1.text((int(h/2)-int(w1/2),int((size_text1_pix-h1)/2)),txt1,font=fontchev,fill=255)
-	draw2.text((int(h/2)-int(w2/2),int((size_text1_pix-h2)/2)),txt2,font=fontking,fill=255)
+	draw1.text((int(h/2)-int(w1/2),int((size_text1_pix-h1)/2)),txt1,font=font1,fill=255)
+	draw2.text((int(h/2)-int(w2/2),int((size_text1_pix-h2)/2)),txt2,font=font2,fill=255)
 
 	rot1=txtimg1.rotate(90,expand=1)
 	rot2=txtimg2.rotate(90,expand=1)
 
 	back.paste(ImageOps.colorize(rot1,(0,0,0),txt1c),(w-(offset_right_pix - offset_text_pix),0),rot1)
-	back.paste(ImageOps.colorize(rot2,(0,0,0),txt2c),(w-(offset_right_pix - offset_text_pix - h1),0),rot2)
-	
+	back.paste(ImageOps.colorize(rot2,(0,0,0),txt2c),(w-(offset_right_pix - offset_between_texts_pix - offset_text_pix - h1),0),rot2)
+
+
+def collage():	
 	im_insertheight = int((h -offset_bp_pix-(2*offset_top_pix))/2)
 	im_insertwidth = int((w - offset_bp_pix - offset_right_pix - offset_left_pix)/2)
 	
@@ -293,5 +298,7 @@ def app(environ, start_response):
 		
 
 if __name__ == '__main__':
-	log('Started WSGI Server')	
+	log('Started WSGI Server')
+	create_collage_back()
+	log('Collage Background Created')
 	WSGIServer(app).run()
