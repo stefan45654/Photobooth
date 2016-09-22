@@ -227,7 +227,9 @@ def app(environ, start_response):
 			for i in range(0,int(len(h2)/2)):
 				html2 = html2+'<span style="color:'+h2[(i*2)+1]+';">'+h2[i*2]+' </span>'
 			html2 = html2+'</h3>'
-			yield(html1+html2)
+			hfont = disp_section['headersfont']
+			html3 = "<style>@font-face {font-family: header;src: url(../"+hfont+");}h3{font-family:header}</style>"
+			yield(html1+html2+html3)
             
 		elif i["q"][0] == "i": # check if the camera and the printer are connected
 			text_camera = commands.getstatusoutput('gphoto2 --auto-detect')

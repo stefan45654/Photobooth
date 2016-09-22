@@ -16,13 +16,14 @@
     <link rel="stylesheet" type="text/css" href="css/flash.css"/>
     <link rel="stylesheet" type="text/css" href="css/spinner.css"/>
     <link rel="stylesheet" type="text/css" href="css/sweetalert.css"/>
+    <link rel="stylesheet" type="text/css" href="css/bouncing_hand.css"/>
     
 	<style>
         /* Style for our header texts
         * --------------------------------------- */
         h1{
             font-size: 5em;
-            font-family: chevalier;
+            font-family: chopinscript;
             color: #fff;
             margin:10px 5px 15px 20px;
             padding:0%;
@@ -62,7 +63,7 @@
 
 	<script src="js/jquery.min.js"></script>
 	<script src="js/jquery-ui.min.js"></script>
-	<script type="text/javascript" src="js/jquery.fullPage.min.js"></script>
+	<script type="text/javascript" src="js/jquery.fullPage.js"></script>
 	<script type="text/javascript" src="js/examples.js"></script>
     <script type="text/javascript" src="js/countdown.js"></script>
     <script type="text/javascript" src="js/flash.js"></script>
@@ -142,7 +143,12 @@
                             }
 					}
                     else if (qry =='c'){
-                        $('#section0').prepend(xmlhttp.response)
+                        resp = xmlhttp.response;
+                        pos = resp.search('<style>');
+                        html = resp.substring(0,pos);
+                        css = resp.substring(pos);
+                        $('#section0').prepend(html);
+                        $('head').append(css);
                     }
 					else if (qry =='s'){
                         if(xmlhttp.response == "1234done"){
@@ -206,7 +212,8 @@
                             execute('w');
                         }
                         else{
-                            swal({   title: "Error!",   text: xmlhttp.response,   type: "error",   confirmButtonText: "OK" },function(){setTimeout(function(){location.reload();},100)});
+                            document.getElementById("printButton").style.pointerEvents = 'none';
+                            swal({   title: "Error!",   text: xmlhttp.response,   type: "info", showCancelButton:true, cancelButtonText:"test without", confirmButtonText: "try again" },function(){setTimeout(function(){location.reload();},100)});
                         }
                     }
                 }
@@ -255,19 +262,19 @@
     <div id="fullpage">
         <div class="section " id="section0"> <!--Startsection-->
             <!--Headers will be read in directly from the config file-->
-            <div class="arrow1 bounce"></div>
+            <div class="hand bounce"></div>
             <img src="imgs/remote_lineshade.png" alt="Remote" style="height:35%;position:absolute;top:35%;right:15%" onclick="startremote()">
         </div>
         
         <div class="section " id="section1"> <!--Previewsection-->
             <img id="preview" style="position: relative; top: 30px;width: 616px;visibility:hidden"></img>
-            <h3 style="font-size:80px;text-align:center;position:relative;top:70px;">sind alle im Bild?</h3>
+            <h3 style="font-size:80px;text-align:center;position:absolute;top:473px;width:100%">sind alle im Bild?</h3>
         </div>
     
         
         <div class="section" id="section2"> <!--Countdownsection-->
-            <h3 id= countdown_text style="position:absolute; left:18%; font-size:80px;text-align:center; top:0%; visibility:visible;">Countdown</h3>
-            <h3 id= 4foto_text style="position:absolute;left:12%;font-size:80px;text-align:center;top:10%;visibility:visible;">dann 4 Fotos!!!</h3>
+            <h3 id= countdown_text style="position:absolute; width:100%; font-size:80px;text-align:center; top:0%; visibility:visible;">Countdown</h3>
+            <h3 id= 4foto_text style="position:absolute;width:100%;font-size:80px;text-align:center;top:10%;visibility:visible;">dann 4 Fotos!!!</h3>
             <h3 id= foto_text style="font-size:100px;text-align:center; top:50%; visibility:hidden;">4 Fotos!!! </h3>
             <div class="container" id="countdown">
                 <ul class="flip secondPlay">
